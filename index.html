@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Habs Blackout Tracker</title>
+<style>
+:root{--bg:#0b1220;--card:#101a33;--muted:#9bb4df;--accent:#59aaff;--glow:#1ed760}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eaf2ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+header{position:sticky;top:0;background:#0f1730cc;backdrop-filter:blur(6px);border-bottom:1px solid #22314a;padding:12px 16px;z-index:10;display:flex;gap:12px;align-items:center}
+header h1{font-size:18px;margin:0}.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.row{display:grid;gap:16px}.card{background:var(--card);border:1px solid #22314a;border-radius:14px;padding:12px}
+.pill{display:flex;align-items:center;gap:10px;background:var(--glow);color:#06240e;padding:10px 14px;border-radius:999px;font-weight:900}
+.muted{color:var(--muted);font-size:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;background:#1a2646;border:1px solid #2a3a64;color:#cfe3ff;opacity:.45}
+.chip.active{background:#fff;color:#04121f;border:2px solid var(--glow);box-shadow:0 0 16px var(--glow);opacity:1}
+.btn{background:var(--accent);color:#04121f;border:none;border-radius:10px;padding:8px 12px;font-weight:800;cursor:pointer}.btn.ghost{background:transparent;color:#bcd8ff;border:1px solid #2a3a64}
+input{background:#0f1a33;color:#eaf2ff;border:1px solid #2a3a64;border-radius:10px;padding:10px;width:100%}
+.game{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #18254a}.grid{display:grid;gap:10px}
+
+/* CSS-only rotating globe (always visible) */
+#globeBox{height:260px;border:1px dashed #2a3a64;border-radius:50%;margin-bottom:10px;position:relative;overflow:hidden;background:radial-gradient(circle at 40% 40%, #123a7a 0%, #0a1a3a 70%)}
+#globeSpin{position:absolute;inset:-20%;border-radius:50%;
+  background: conic-gradient(from 0deg,
+    rgba(255,255,255,.08) 0 10deg, transparent 10deg 30deg,
+    rgba(255,255,255,.08) 30deg 40deg, transparent 40deg 60deg,
+    rgba(255,255,255,.08) 60deg 70deg, transparent 70deg 90deg);
+  animation:spin 18s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.marker{position:absolute;width:12px;height:12px;background:#fff;border:2px solid #000;border-radius:50%;box-shadow:0 0 8px var(--glow);display:none}
+
+/* Calendar */
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-top:16px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.dow{text-align:center;font-size:12px;color:#9bb4df}
+.day{background:#0f1b34;border:1px solid #22314a;border-radius:10px;min-height:92px;padding:6px;position:relative}
+.day .date{font-size:12px;color:#9bb4df}
+.day .gamepill{margin-top:6px;font-size:12px;background:#142654;border:1px solid #28407a;border-radius:10px;padding:4px 6px;display:flex;align-items:center;gap:6px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Habs Blackout Tracker</h1>
+  <div style="margin-left:auto;display:flex;gap:8px">
+    <button id="toggleGlobe" class="btn ghost">Hide globe</button>
+    <a href="#cal" class="btn ghost">Go to calendar</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="row">
+    <section class="card">
+      <div id="globeBox"><div id="globeSpin"></div><div id="marker" class="marker"></div></div>
+      <div id="next" class="pill">Next game: loading…</div>
+      <div class="muted" style="margin-top:6px;">Auto-detect highlights broadcasters for your region. Enter postal/ZIP to override.</div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <input id="locInput" placeholder="Postal code / ZIP / country"/>
+        <button id="applyBtn" class="btn">Check</button>
+      </div>
+
+      <h3 style="margin:14px 0 6px;">Where you can watch</h3>
+      <div id="watch" class="chips"></div>
+
+      <div id="cal">
+        <div class="cal-head">
+          <h3 style="margin:0;">Calendar</h3>
+          <div><button id="prevMonth" class="btn ghost">◀ Prev</button>
+               <button id="nextMonth" class="btn ghost">Next ▶</button></div>
+        </div>
+        <div class="cal-grid" id="dow"></div>
+        <div class="cal-grid" id="monthGrid"></div>
+      </div>
+    </section>
+
+    <aside class="card">
+      <h3 style="margin:0 0 8px;">Upcoming games</h3>
+      <div id="schedShort" class="grid"></div>
+      <div class="accordion">
+        <div id="toggleMore" style="color:#9bd0ff;text-decoration:underline;cursor:pointer">View more</div>
+        <div id="schedAll" style="display:none"></div>
+        <div style="margin-top:8px;">
+          <a href="/schedule" style="color:#9bd0ff;text-decoration:underline">View full Canadiens schedule →</a>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<script>
+const TEAM="MTL",
+  ALL_NETS=["tsn","rds","sn","cbc","city","espn","abc","tnt","hulu","max","prime","dazn"],
+  label={tsn:"TSN",rds:"RDS",sn:"Sportsnet",cbc:"CBC",city:"Citytv",espn:"ESPN",abc:"ABC",tnt:"TNT",hulu:"Hulu",max:"Max",prime:"Prime",dazn:"DAZN"};
+
+const nextEl=document.getElementById("next"),
+  shortEl=document.getElementById("schedShort"),
+  allEl=document.getElementById("schedAll"),
+  watchEl=document.getElementById("watch"),
+  calGrid=document.getElementById("monthGrid"),
+  calDow=document.getElementById("dow");
+
+function chip(n,a=false){
+  const d=document.createElement("div");
+  d.className="chip"+(a?" active":"");
+  d.textContent=label[n];   // text label so we don't need images
+  return d;
+}
+function renderWatch(r){
+  const A=new Set();
+  if(r==="canada_in") A.add("tsn"),A.add("rds"),A.add("sn"),A.add("cbc"),A.add("city");
+  else if(r==="canada_out") A.add("sn"),A.add("cbc"),A.add("city");
+  else if(r==="usa") A.add("espn"),A.add("abc"),A.add("tnt"),A.add("hulu"),A.add("max"),A.add("prime");
+  else if(r==="intl") A.add("dazn");
+  watchEl.innerHTML="";
+  ALL_NETS.forEach(n=>watchEl.appendChild(chip(n,A.has(n))));
+}
+function regionFromPostalOrZip(c){
+  if(!c) return null;
+  c=c.trim().toUpperCase();
+  if(/^[A-Z]\d[A-Z]/.test(c)){ if(/^H|^G|^J/.test(c)) return "canada_in"; return "canada_out"; }
+  if(/^\d{5}/.test(c)) return "usa";
+  if(/^[A-Z]{2,}$/.test(c)){ if(c==="CA"||c==="CANADA") return "canada_out"; if(c==="US"||c==="USA") return "usa"; }
+  return "intl";
+}
+async function autodetect(){
+  try{
+    const r=await fetch("https://ipapi.co/json/");
+    const j=await r.json();
+    if(j?.country==="CA") return "canada_out";
+    if(j?.country==="US") return "usa";
+    return "intl";
+  }catch{return null}
+}
+
+function gameRow(g){
+  const d=document.createElement("div");
+  d.className="game";
+  d.innerHTML = `<div style="flex:1;">
+      <div style="font-weight:800">${g.line}</div>
+      <div class="muted">${g.isHome?"Bell Centre, Montreal":"Road game"} — Opp: ${g.opp}</div>
+    </div>`;
+  return d;
+}
+
+let SCHEDULE=[];
+async function loadSchedule(){
+  const r=await fetch("/.netlify/functions/schedule");
+  const data=await r.json();
+  SCHEDULE=data.lines||[];
+  if(data.nextGame){
+    const ng=data.nextGame;
+    nextEl.textContent = `Next: ${ng.isHome?"Home":"Away"} vs ${ng.opp}`;
+  } else {
+    nextEl.textContent="Next game: unavailable";
+  }
+  shortEl.innerHTML="";
+  SCHEDULE.filter(g=>new Date(g.when)>=new Date()).slice(0,5).forEach(g=>shortEl.appendChild(gameRow(g)));
+  allEl.innerHTML="";
+  SCHEDULE.forEach(g=>allEl.appendChild(gameRow(g)));
+  let open=false;
+  document.getElementById("toggleMore").onclick=()=>{open=!open; allEl.style.display=open?"block":"none"; document.getElementById("toggleMore").textContent=open?"Hide":"View more"};
+  buildCalendar(new Date(SCHEDULE[0]?.when || Date.now()));
+}
+
+function buildCalendar(date){
+  calDow.innerHTML="";
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d=>{const e=document.createElement("div");e.className="dow";e.textContent=d;calDow.appendChild(e)});
+  calGrid.innerHTML="";
+  const first=new Date(date.getFullYear(),date.getMonth(),1),
+        startIdx=first.getDay(),
+        daysIn=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();
+  for(let i=0;i<startIdx;i++){const c=document.createElement("div");c.className="day";calGrid.appendChild(c)}
+  const map=new Map();
+  SCHEDULE.forEach(g=>{const d=new Date(g.when);const k=d.toISOString().slice(0,10); if(!map.has(k))map.set(k,[]); map.get(k).push(g)});
+  for(let day=1;day<=daysIn;day++){
+    const d=new Date(date.getFullYear(),date.getMonth(),day);
+    const k=d.toISOString().slice(0,10);
+    const cell=document.createElement("div");cell.className="day";
+    cell.innerHTML=`<div class="date">${d.toLocaleDateString('en-CA',{month:'short',day:'numeric'})}</div>`;
+    (map.get(k)||[]).forEach(g=>{
+      const gp=document.createElement("div");gp.className="gamepill";
+      gp.textContent = `${g.isHome?'Home':'Away'} vs ${g.opp}`;
+      cell.appendChild(gp);
+    });
+    calGrid.appendChild(cell);
+  }
+  document.getElementById("prevMonth").onclick=()=>{const d=new Date(date);d.setMonth(d.getMonth()-1);buildCalendar(d)};
+  document.getElementById("nextMonth").onclick=()=>{const d=new Date(date);d.setMonth(d.getMonth()+1);buildCalendar(d)};
+}
+
+document.getElementById("toggleGlobe").onclick=()=>{
+  const box=document.getElementById("globeBox");
+  const d=getComputedStyle(box).display;
+  box.style.display=(d==="none")?"block":"none";
+  document.getElementById("toggleGlobe").textContent=(d==="none")?"Hide globe":"Show globe";
+};
+document.getElementById("applyBtn").onclick=()=>{
+  const code=document.getElementById("locInput").value;
+  const reg=regionFromPostalOrZip(code)||"intl";
+  renderWatch(reg); placeMarker(reg);
+};
+
+function placeMarker(region){
+  const box=document.getElementById("globeBox"), m=document.getElementById("marker");
+  const w=box.clientWidth,h=box.clientHeight; let x=w*0.55,y=h*0.55;
+  if(region==="canada_in"||region==="canada_out"){x=w*0.48;y=h*0.42}
+  if(region==="usa"){x=w*0.42;y=h*0.55}
+  if(region==="intl"){x=w*0.62;y=h*0.58}
+  m.style.left=(x-6)+"px"; m.style.top=(y-6)+"px"; m.style.display="block";
+}
+
+(async()=>{
+  await loadSchedule();
+  const reg=await autodetect();
+  renderWatch(reg||"intl");
+  if(reg) placeMarker(reg);
+})();
+</script>
+</body>
+</html>
