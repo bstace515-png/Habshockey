@@ -76,5 +76,6 @@
   { "date": "2026-03-19", "opponent": "Winnipeg Jets", "home": true, "time": "7:30 PM ET", "broadcasters": ["TSN3", "TSN2", "RDS"] },
   { "date": "2026-03-21", "opponent": "Tampa Bay Lightning", "home": false, "time": "7:00 PM ET", "broadcasters": ["BallySports", "TSN2", "RDS"] },
   { "date": "2026-03-23", "opponent": "Florida Panthers", "home": false, "time": "7:00 PM ET", "broadcasters": ["BallySports", "TSN2", "RDS"] },
-  { "date": "2026-03-26", "opponent": "New Jersey Devils", "home": true, "time": "7:00 PM ET"}
+  { "date": "2026-03-26", "opponent": "New Jersey Devils", "home": true, "time": "7:00 PM ET"] }
+]
 ]
