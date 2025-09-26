@@ -1,15 +1,12 @@
-// netlify/functions/schedule.js
 import { readFile } from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function handler(event, context) {
   try {
-    // Go up to /data/schedule.json
-    const filePath = path.join(__dirname, "../../data/schedule.json");
+    // Build a path to the JSON file
+    const filePath = path.resolve("data/schedule.json");
     const data = await readFile(filePath, "utf-8");
+
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
