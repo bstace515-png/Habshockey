@@ -1,31 +1,24 @@
 // netlify/functions/schedule.js
+import { readFile } from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function handler(event, context) {
   try {
-    const res = await fetch(
-      "https://statsapi.web.nhl.com/api/v1/schedule?teamId=8&season=20252026&expand=schedule.broadcasts",
-      {
-        headers: {
-          "User-Agent": "HabsBlackoutApp/1.0"
-        }
-      }
-    );
-
-    if (!res.ok) {
-      throw new Error(`NHL API error: ${res.status}`);
-    }
-
-    const data = await res.json();
-
+    // Go up to /data/schedule.json
+    const filePath = path.join(__dirname, "../../data/schedule.json");
+    const data = await readFile(filePath, "utf-8");
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: data
     };
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ error: err.message })
     };
   }
 }
