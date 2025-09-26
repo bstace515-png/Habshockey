@@ -19,10 +19,18 @@ input{background:#0f1a33;color:#eaf2ff;border:1px solid #2a3a64;border-radius:10
 .game{display:flex;align-items:center;gap:10px;padding:8px 6px;border-bottom:1px solid #18254a}.grid{display:grid;gap:10px}
 
 /* CSS-only rotating globe (always visible) */
-#globeBox{height:260px;border:1px dashed #2a3a64;border-radius:50%;margin-bottom:10px;position:relative;overflow:hidden;background:radial-gradient(circle at 40% 40%, #123a7a 0%, #0a1a3a 70%)}
-#globeSpin{position:absolute;inset:-20%;border-radius:50%;
-  background: conic-gradient(from 0deg,
+#globeBox {
+  width: 60vw;              /* scales with screen width */
+  max-width: 320px;         /* cap size on big screens */
+  min-width: 200px;         /* keep it visible on small screens */
+  aspect-ratio: 1 / 1;      /* ensures it stays a perfect circle */
+  border: 1px dashed #2a3a64;
+  border-radius: 50%;
+  margin: 0 auto 10px;      /* centers it */
+  position: relative;
+  overflow: hidden;
   background: radial-gradient(circle at 40% 40%, #123a7a 0%, #0a1a3a 70%);
+}
 
     rgba(255,255,255,.08) 0 10deg, transparent 10deg 30deg,
     rgba(255,255,255,.08) 30deg 40deg, transparent 40deg 60deg,
