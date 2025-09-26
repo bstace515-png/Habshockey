@@ -1,5 +1,4 @@
 // netlify/functions/schedule.js
-import fetch from "node-fetch";   // <-- important
 
 export async function handler(event, context) {
   try {
@@ -26,7 +25,7 @@ export async function handler(event, context) {
   } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: err.toString() }),
+      body: JSON.stringify({ error: err.message }),
     };
   }
 }
